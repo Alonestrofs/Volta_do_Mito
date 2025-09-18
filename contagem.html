@@ -3,22 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contagem Regressiva a Partir do Commit</title>
+    <title>Contagem Regressiva para o Retorno</title>
     <style>
-        /* Estilos gerais para o corpo da página */
+        /* Os estilos (CSS) continuam os mesmos */
         body, html {
             height: 100%;
             margin: 0;
             font-family: 'Arial', sans-serif;
             color: white;
-            overflow: hidden; /* Evita barras de rolagem */
+            overflow: hidden;
         }
-
-        /* Container principal com a imagem de fundo */
         .background-container {
             background-image: url('https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg');
-            background-size: cover; /* Cobre todo o espaço disponível */
-            background-position: center; /* Centraliza a imagem */
+            background-size: cover;
+            background-position: center;
             background-repeat: no-repeat;
             height: 100%;
             display: flex;
@@ -26,27 +24,22 @@
             justify-content: center;
             align-items: center;
             text-align: center;
-            /* Adiciona um leve sombreamento ao texto para melhor legibilidade */
             text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
         }
-
-        /* Estilo para a mensagem principal */
         h1 {
-            font-size: 5rem; /* Tamanho de fonte grande */
+            font-size: 5rem;
             font-weight: bold;
-            color: #FFDF00; /* Cor amarela da bandeira */
+            color: #FFDF00;
             margin-bottom: 20px;
         }
-
-        /* Estilo para a div que contém a contagem */
         #countdown {
             font-size: 2.5rem;
-            background-color: rgba(0, 39, 118, 0.7); /* Azul da bandeira com transparência */
+            background-color: rgba(0, 39, 118, 0.7);
             padding: 20px;
             border-radius: 15px;
             border: 2px solid #FFDF00;
+            min-width: 600px; /* Garante espaço para a mensagem */
         }
-        
         #info-data-inicio {
             margin-top: 20px;
             font-size: 1rem;
@@ -54,14 +47,13 @@
             padding: 5px 10px;
             border-radius: 5px;
         }
-
-        /* Media queries para ajustar o tamanho da fonte em telas menores */
         @media (max-width: 768px) {
             h1 {
                 font-size: 3rem;
             }
             #countdown {
                 font-size: 1.5rem;
+                min-width: 90%;
             }
         }
     </style>
@@ -70,44 +62,59 @@
 
     <div class="background-container">
         <h1>Volta do Mito</h1>
-        <div id="countdown">Calculando...</div>
+        <div id="countdown">Buscando a hora certa para iniciar a contagem...</div>
         <div id="info-data-inicio"></div>
     </div>
 
     <script>
-        // =====================================================================================
-        // LINHA DE COMANDO PARA RETIRAR:
-        // COLE A DATA E HORA DO SEU COMMIT AQUI (no formato ISO 8601)
-        // Se o valor for "" (vazio), ele usará a data e hora atuais como ponto de partida.
-        // Exemplo de data de commit: "2025-09-18T13:30:00-03:00"
-        
-        const commitDateISO = ""; // <-- EDITE AQUI
-
-        // =====================================================================================
-
         const countdownElement = document.getElementById('countdown');
         const infoDataInicioElement = document.getElementById('info-data-inicio');
         
-        let dataInicio;
-
-        // Verifica se a data do commit foi inserida
-        if (commitDateISO.trim() === "") {
-            // Se não, usa a data/hora atual (Fase 1)
-            dataInicio = new Date();
-            infoDataInicioElement.textContent = `Contagem iniciada a partir de agora.`;
-        } else {
-            // Se sim, usa a data do commit (Fase 2)
-            dataInicio = new Date(commitDateISO);
-            infoDataInicioElement.textContent = `Contagem iniciada a partir do commit de: ${dataInicio.toLocaleString('pt-BR')}`;
-        }
+        // URL da API de tempo para o fuso horário de São Paulo
+        const timeApiUrl = 'https://worldtimeapi.org/api/timezone/America/Sao_Paulo';
         
-        // Define a data alvo para a contagem regressiva
-        const dataAlvo = new Date(dataInicio.getTime());
-        dataAlvo.setFullYear(dataAlvo.getFullYear() + 27);
-        dataAlvo.setMonth(dataAlvo.getMonth() + 3);
+        let intervalo; // Variável para guardar o setInterval
 
-        function atualizarContagem() {
-            const agora = new Date();
+        // Função principal que inicia a contagem
+        async function iniciarContagemComHoraAPI() {
+            try {
+                // 1. Faz a chamada à API
+                const response = await fetch(timeApiUrl);
+                if (!response.ok) {
+                    // Se a resposta da API não for bem-sucedida, lança um erro
+                    throw new Error('Falha na rede ao buscar a hora.');
+                }
+                const dados = await response.json();
+                
+                // 2. Usa a data e hora da API como ponto de partida
+                const dataInicio = new Date(dados.datetime);
+                
+                iniciar(dataInicio, "Horário oficial de Brasília (via API)");
+
+            } catch (error) {
+                console.error("Erro ao buscar hora da API:", error);
+                // 3. Plano B: Se a API falhar, usa a hora local do PC
+                const dataInicioLocal = new Date();
+                iniciar(dataInicioLocal, "API indisponível, usando hora local do seu PC");
+            }
+        }
+
+        // Função que configura e inicia o relógio
+        function iniciar(dataInicio, origem) {
+            infoDataInicioElement.textContent = `Origem do tempo: ${origem}`;
+
+            // Calcula a data alvo (27 anos e 3 meses no futuro)
+            const dataAlvo = new Date(dataInicio.getTime());
+            dataAlvo.setFullYear(dataAlvo.getFullYear() + 27);
+            dataAlvo.setMonth(dataAlvo.getMonth() + 3);
+
+            // Inicia o intervalo que atualiza o relógio a cada milissegundo
+            intervalo = setInterval(() => atualizarContagem(dataAlvo), 1);
+        }
+
+        // Função que atualiza a contagem na tela
+        function atualizarContagem(dataAlvo) {
+            const agora = new Date(); // Pega a hora atual do cliente para calcular a diferença
             const diferenca = dataAlvo - agora;
 
             if (diferenca <= 0) {
@@ -140,8 +147,8 @@
             `;
         }
 
-        const intervalo = setInterval(atualizarContagem, 1);
-        atualizarContagem();
+        // Chama a função principal para dar início a todo o processo
+        iniciarContagemComHoraAPI();
     </script>
 
 </body>
